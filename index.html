@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Фраза из файлов</title>
+</head>
+<body>
+<h1>Тестовое задания на подключение к курсу «Архитектура веб-проектов на Node.js» Бакунин Никита</h1>
+
+<button id="loadButton">Загрузить фразу async</button>
+<div id="result" style="margin-top: 8px"></div>
+<button id="loadButtonThen" style="margin-top: 16px">Загрузить фразу Then</button>
+<div id="resultThen" style="margin-top: 8px"></div>
+
+<script>
+    const fetchFile = async (url) => {
+        try {
+            const response = await fetch(url);
+            if (!response.ok) throw new Error('Ошибка загрузки');
+            const clonedResponse = response.clone();
+            return clonedResponse.json().catch(() => response.text());
+        } catch (error) {
+            console.warn(`Не удалось загрузить файл: ${url}`, error);
+            return ''; // Игнорируем файл если к нему нету доступа, либо файл отсутствует на сервере
+        }
+    };
+
+    const getPhrase = async (file) => {
+        const url = `https://fe.it-academy.by/Examples/words_tree/${file}`;
+        const content = await fetchFile(url);
+        if (typeof content === 'string') {
+            return content;
+        } else {
+            const phrases = await Promise.all(content.map(getPhrase));
+            return phrases.join(' ');
+        }
+    };
+
+    document.getElementById('loadButton').onclick = async () => {
+        try {
+            const phrase = await getPhrase('root.txt');
+            document.getElementById('result').innerText = phrase;
+        } catch (error) {
+            console.error(error);
+        }
+    };
+
+    //load button then variant
+
+    function fetchFileThen(url) {
+        return fetch(url)
+            .then(response => {
+                if (!response.ok) throw new Error('Ошибка загрузки');
+                const clonedResponse = response.clone();
+                return clonedResponse.json().catch(() => response.text());
+            })
+            .catch(error => {
+                console.warn(`Не удалось загрузить файл: ${url}`, error);
+                return ''; // Игнорируем файл если к нему нету доступа, либо файл отсутствует на сервере
+            });
+    }
+
+    function getPhraseThen(file) {
+        const url = `https://fe.it-academy.by/Examples/words_tree/${file}`;
+        return fetchFileThen(url).then(content => {
+            if (typeof content === 'string') {
+                return content;
+            } else {
+                let result = '';
+                const promises = content.map(subFile => {
+                    return getPhraseThen(subFile).then(phrase => {
+                        result += phrase + ' '; // Последовательная загрузка
+                    });
+                });
+
+                return promises.reduce((prevPromise, currentPromise) => {
+                    return prevPromise.then(() => currentPromise);
+                }, Promise.resolve()).then(() => {
+                    return result.trim(); // Убираем последний пробел
+                });
+            }
+        });
+    }
+
+    document.getElementById('loadButtonThen').onclick = function() {
+        getPhraseThen('root.txt').then(phrase => {
+            document.getElementById('resultThen').innerText = phrase;
+        }).catch(error => {
+            console.error(error);
+        });
+    };
+</script>
+</body>
+</html>
