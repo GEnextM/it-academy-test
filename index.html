@@ -39,8 +39,7 @@
 
     document.getElementById('loadButton').onclick = async () => {
         try {
-            const phrase = await getPhrase('root.txt');
-            document.getElementById('result').innerText = phrase;
+            document.getElementById('result').innerText = await getPhrase('root.txt');
         } catch (error) {
             console.error(error);
         }
@@ -67,17 +66,9 @@
             if (typeof content === 'string') {
                 return content;
             } else {
-                let result = '';
-                const promises = content.map(subFile => {
-                    return getPhraseThen(subFile).then(phrase => {
-                        result += phrase + ' '; // Последовательная загрузка
-                    });
-                });
-
-                return promises.reduce((prevPromise, currentPromise) => {
-                    return prevPromise.then(() => currentPromise);
-                }, Promise.resolve()).then(() => {
-                    return result.trim(); // Убираем последний пробел
+                const promises = content.map(subFile => getPhraseThen(subFile));
+                return Promise.all(promises).then(results => {
+                    return results.join(' ').trim();
                 });
             }
         });
